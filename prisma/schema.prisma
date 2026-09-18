@@ -1,0 +1,234 @@
+// Prisma Schema para Plataforma SaaS de B2B Prospecting & Intelligence
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pg_trgm, uuid_ossp]
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum CompanySize {
+  MEI
+  ME
+  EPP
+  MEDIO
+  GRANDE
+}
+
+enum TaxRegime {
+  SIMPLES_NACIONAL
+  LUCRO_PRESUMIDO
+  LUCRO_REAL
+  MEI
+  UNKNOWN
+}
+
+enum ContractStatus {
+  VIGENTE
+  ENCERRADO
+  CANCELADO
+  SUSPENSO
+}
+
+enum ProspectStatus {
+  NOVO
+  QUALIFICADO
+  EM_CONTATO
+  PROPOSTA_ENVIADA
+  CONVERTIDO
+  PERDIDO
+}
+
+enum ProposalStatus {
+  DRAFT
+  GENERATED
+  SENT
+  ACCEPTED
+  REJECTED
+}
+
+model Organization {
+  id            String         @id @default(uuid())
+  name          String
+  slug          String         @unique
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  
+  users         User[]
+  prospectLists ProspectList[]
+  proposals     Proposal[]
+
+  @@map("organizations")
+}
+
+model User {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  email          String       @unique
+  name           String
+  role           String       @default("MEMBER")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  prospectLists  ProspectList[]
+  proposals      Proposal[]
+
+  @@map("users")
+}
+
+model Company {
+  id                   String              @id @default(uuid())
+  cnpj                 String              @unique @db.VarChar(14)
+  legalName            String              @map("legal_name")
+  tradeName            String?             @map("trade_name")
+  status               String              @default("ATIVA")
+  registrationDate     DateTime?           @map("registration_date")
+  primaryCnaeCode      String              @map("primary_cnae_code") @db.VarChar(10)
+  primaryCnaeDesc      String              @map("primary_cnae_desc")
+  secondaryCnaes       Json?               @map("secondary_cnaes")
+  legalNature          String?             @map("legal_nature")
+  companySize          CompanySize         @default(ME) @map("company_size")
+  shareCapital         Decimal             @default(0.00) @map("share_capital") @db.Decimal(15, 2)
+  
+  state                String              @db.VarChar(2)
+  city                 String              @db.VarChar(150)
+  neighborhood         String?             @db.VarChar(150)
+  zipCode              String?             @map("zip_code") @db.VarChar(10)
+  street               String?
+  number               String?
+  
+  email                String?
+  phone                String?
+  
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+
+  partners             CompanyPartner[]
+  financialIndicators  FinancialIndicator?
+  publicContracts      PublicContract[]
+  prospectListItems    ProspectListItem[]
+  proposals            Proposal[]
+
+  @@index([cnpj])
+  @@index([state, city])
+  @@index([primaryCnaeCode])
+  @@index([companySize])
+  @@map("companies")
+}
+
+model CompanyPartner {
+  id          String   @id @default(uuid())
+  companyId   String   @map("company_id")
+  name        String
+  document    String?
+  role        String
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("company_partners")
+}
+
+model FinancialIndicator {
+  id                        String    @id @default(uuid())
+  companyId                 String    @unique @map("company_id")
+  taxRegime                 TaxRegime @default(UNKNOWN) @map("tax_regime")
+  estimatedAnnualRevenueMin  Decimal   @map("estimated_annual_revenue_min") @db.Decimal(15, 2)
+  estimatedAnnualRevenueMax  Decimal   @map("estimated_annual_revenue_max") @db.Decimal(15, 2)
+  estimatedEmployeeCountMin Int       @default(1) @map("estimated_employee_count_min")
+  estimatedEmployeeCountMax Int       @default(5) @map("estimated_employee_count_max")
+  financialCapacityScore    Int       @default(50) @map("financial_capacity_score")
+  suggestedTicketMin        Decimal   @map("suggested_ticket_min") @db.Decimal(15, 2)
+  suggestedTicketMax        Decimal   @map("suggested_ticket_max") @db.Decimal(15, 2)
+  publicContractsVolumeTotal Decimal  @default(0.00) @map("public_contracts_volume_total") @db.Decimal(15, 2)
+  calculatedAt              DateTime  @default(now()) @map("calculated_at")
+
+  company                   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("financial_indicators")
+}
+
+model PublicContract {
+  id               String         @id @default(uuid())
+  companyId        String         @map("company_id")
+  contractNumber   String         @map("contract_number")
+  buyerAgency      String         @map("buyer_agency")
+  buyerUf          String         @map("buyer_uf") @db.VarChar(2)
+  modality         String
+  object           String         @db.Text
+  category         String?
+  totalValue       Decimal        @map("total_value") @db.Decimal(15, 2)
+  startDate        DateTime       @map("start_date")
+  endDate          DateTime       @map("end_date")
+  status           ContractStatus @default(VIGENTE)
+  sourceUrl        String?        @map("source_url")
+  sourceSystem     String         @default("PNCP") @map("source_system")
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  company          Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([buyerAgency])
+  @@map("public_contracts")
+}
+
+model ProspectList {
+  id             String             @id @default(uuid())
+  organizationId String             @map("organization_id")
+  createdById    String             @map("created_by_id")
+  name           String
+  description    String?
+  filterCriteria Json?              @map("filter_criteria")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      User               @relation(fields: [createdById], references: [id])
+  items          ProspectListItem[]
+
+  @@map("prospect_lists")
+}
+
+model ProspectListItem {
+  id             String         @id @default(uuid())
+  prospectListId String         @map("prospect_list_id")
+  companyId      String         @map("company_id")
+  status         ProspectStatus @default(NOVO)
+  notes          String?        @db.Text
+  tags           String[]       @default([])
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  prospectList   ProspectList   @relation(fields: [prospectListId], references: [id], onDelete: Cascade)
+  company        Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([prospectListId, companyId])
+  @@map("prospect_list_items")
+}
+
+model Proposal {
+  id             String         @id @default(uuid())
+  organizationId String         @map("organization_id")
+  createdById    String         @map("created_by_id")
+  companyId      String         @map("company_id")
+  title          String
+  status         ProposalStatus @default(DRAFT)
+  proposedValue  Decimal        @map("proposed_value") @db.Decimal(15, 2)
+  contentJson    Json           @map("content_json")
+  pitchRationale String?        @map("pitch_rationale") @db.Text
+  pdfUrl         String?        @map("pdf_url")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      User           @relation(fields: [createdById], references: [id])
+  company        Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([companyId])
+  @@map("proposals")
+}
