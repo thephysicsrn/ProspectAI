@@ -18,7 +18,7 @@ import { useAuth } from '@/lib/auth-context';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, quickDemoLogin, user } = useAuth();
+  const { login } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -52,20 +52,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleQuickLogin = async (role: 'sdr' | 'manager') => {
-    setError(null);
-    setLoading(true);
-    try {
-      await quickDemoLogin(role);
-      router.push('/');
-    } catch (err: any) {
-      console.error('Demo login error:', err);
-      setError('Falha ao conectar com modo de demonstração.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#070a10] text-zinc-100 flex flex-col justify-center items-center p-4 relative overflow-hidden">
       {/* Glow Effects */}
@@ -94,7 +80,7 @@ export default function LoginPage() {
             <div className="mt-8 space-y-1.5">
               <h2 className="text-2xl font-black text-white tracking-tight">Acesse sua conta</h2>
               <p className="text-xs text-zinc-400">
-                Entre com as credenciais da sua equipe comercial para prospectar empresas
+                Entre com as credenciais cadastradas da sua equipe para prospectar empresas
               </p>
             </div>
 
@@ -109,7 +95,7 @@ export default function LoginPage() {
             {/* Login Form */}
             <form onSubmit={handleLogin} className="mt-6 space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-zinc-300">E-mail Corporativo</label>
+                <label className="text-xs font-semibold text-zinc-300">E-mail Cadastrado</label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
@@ -163,7 +149,7 @@ export default function LoginPage() {
                 className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition-all disabled:opacity-50 mt-2 cursor-pointer"
               >
                 {loading ? (
-                  <span className="animate-pulse">Conectando ao Firebase...</span>
+                  <span className="animate-pulse">Validando credenciais...</span>
                 ) : (
                   <>
                     <span>Entrar no Portal Comercial</span>
@@ -172,33 +158,6 @@ export default function LoginPage() {
                 )}
               </button>
             </form>
-
-            {/* Demo Quick Access */}
-            <div className="mt-6 pt-6 border-t border-[#1e293b] space-y-2">
-              <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
-                Acesso Rápido de Demonstração (Firebase):
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={() => handleQuickLogin('sdr')}
-                  className="py-2.5 px-3 rounded-lg bg-[#141b29] border border-[#1e293b] hover:border-cyan-500 text-zinc-300 hover:text-white text-xs font-medium text-left transition-all disabled:opacity-50 cursor-pointer"
-                >
-                  <p className="font-semibold text-white">Login como SDR</p>
-                  <p className="text-[10px] text-cyan-400">Captação & Contatos</p>
-                </button>
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={() => handleQuickLogin('manager')}
-                  className="py-2.5 px-3 rounded-lg bg-[#141b29] border border-[#1e293b] hover:border-indigo-500 text-zinc-300 hover:text-white text-xs font-medium text-left transition-all disabled:opacity-50 cursor-pointer"
-                >
-                  <p className="font-semibold text-white">Login como Gestor</p>
-                  <p className="text-[10px] text-indigo-400">Dashboard & Propostas</p>
-                </button>
-              </div>
-            </div>
           </div>
 
           <div className="mt-8 pt-4 text-center text-xs text-zinc-500">

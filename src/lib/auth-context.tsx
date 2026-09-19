@@ -7,7 +7,6 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  signInAnonymously,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
@@ -40,7 +39,6 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   signup: (data: SignUpData) => Promise<void>;
   logout: () => Promise<void>;
-  quickDemoLogin: (role: 'sdr' | 'manager') => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -50,7 +48,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch or sync user profile from Firestore
   const loadUserProfile = async (uid: string, fallbackEmail: string) => {
     try {
       const userRef = doc(db, 'users', uid);
@@ -59,11 +56,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (snap.exists()) {
         setUserProfile(snap.data() as UserProfile);
       } else {
-        // Fallback default profile if not in Firestore yet
         const defaultProfile: UserProfile = {
           uid,
           email: fallbackEmail || 'usuario@prospectai.com.br',
-          companyName: 'Empresa Parceira B2B',
+          companyName: 'Empresa B2B',
           adminName: fallbackEmail ? fallbackEmail.split('@')[0] : 'Gestor Comercial',
           plan: 'scale',
           role: 'admin',
@@ -71,11 +67,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           status: 'active',
         };
         setUserProfile(defaultProfile);
-        // Persist to Firestore
         try {
           await setDoc(userRef, defaultProfile);
         } catch (e) {
-          console.warn('Could not auto-save fallback profile to Firestore:', e);
+          console.warn('Could not auto-save profile to Firestore:', e);
         }
       }
     } catch (err) {
@@ -133,7 +128,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         status: 'active',
       };
 
-      // Save user profile in Firestore
       await setDoc(doc(db, 'users', cred.user.uid), newProfile);
       setUserProfile(newProfile);
     } finally {
@@ -152,68 +146,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const quickDemoLogin = async (role: 'sdr' | 'manager') => {
-    setLoading(true);
-    try {
-      // Create or sign in anonymous or demo credentials
-      const demoEmail = role === 'sdr' ? 'sdr.vendas@empresa.com.br' : 'diretoria@empresa.com.br';
-      const demoPass = 'ProspectAI@2026';
-
-      try {
-        await signInWithEmailAndPassword(auth, demoEmail, demoPass);
-      } catch (loginErr: any) {
-        // If demo user doesn't exist yet in Firebase Auth, create it!
-        if (loginErr.code === 'auth/user-not-found' || loginErr.code === 'auth/invalid-credential') {
-          try {
-            const cred = await createUserWithEmailAndPassword(auth, demoEmail, demoPass);
-            const demoProfile: UserProfile = {
-              uid: cred.user.uid,
-              email: demoEmail,
-              companyName: role === 'sdr' ? 'Alfa Tecnologia B2B' : 'Holding Brasil Soluções',
-              adminName: role === 'sdr' ? 'Consultor SDR Vendas' : 'Diretor Comercial',
-              plan: role === 'sdr' ? 'starter' : 'enterprise',
-              role: role === 'sdr' ? 'sdr' : 'manager',
-              createdAt: new Date().toISOString(),
-              status: 'active',
-            };
-            await setDoc(doc(db, 'users', cred.user.uid), demoProfile);
-            setUserProfile(demoProfile);
-          } catch (createErr) {
-            // If creation fails (e.g. already in use or offline), use anonymous sign in
-            const anon = await signInAnonymously(auth);
-            setUserProfile({
-              uid: anon.user.uid,
-              email: demoEmail,
-              companyName: 'Alfa Soluções B2B',
-              adminName: role === 'sdr' ? 'SDR Vendas' : 'Gestor Comercial',
-              plan: role === 'sdr' ? 'starter' : 'enterprise',
-              role: role === 'sdr' ? 'sdr' : 'manager',
-              createdAt: new Date().toISOString(),
-              status: 'active',
-            });
-          }
-        } else {
-          // Fallback demo
-          const anon = await signInAnonymously(auth);
-          setUserProfile({
-            uid: anon.user.uid,
-            email: demoEmail,
-            companyName: 'Alfa Soluções B2B',
-            adminName: role === 'sdr' ? 'SDR Vendas' : 'Gestor Comercial',
-            plan: role === 'sdr' ? 'starter' : 'enterprise',
-            role: role === 'sdr' ? 'sdr' : 'manager',
-            createdAt: new Date().toISOString(),
-            status: 'active',
-          });
-        }
-      }
-    } catch (finalErr) {
-      console.error('Quick demo login error:', finalErr);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <AuthContext.Provider
       value={{
@@ -223,7 +155,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         signup,
         logout,
-        quickDemoLogin,
       }}
     >
       {children}
