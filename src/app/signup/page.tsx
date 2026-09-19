@@ -12,27 +12,69 @@ import {
   ShieldCheck,
   ArrowRight,
   Sparkles,
+  Lock,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  CheckCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/lib/auth-context';
 
 function SignUpContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const defaultPlan = searchParams.get('plan') || 'scale';
+  const { signup } = useAuth();
 
   const [plan, setPlan] = useState(defaultPlan);
   const [companyName, setCompanyName] = useState('');
   const [adminName, setAdminName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
+    if (password.length < 6) {
+      setError('A senha deve conter no mínimo 6 caracteres.');
+      return;
+    }
+
     setLoading(true);
-    setTimeout(() => {
-      router.push('/');
-    }, 1000);
+    try {
+      await signup({
+        email,
+        password,
+        companyName,
+        adminName,
+        phone,
+        plan,
+      });
+      setSuccess(true);
+      setTimeout(() => {
+        router.push('/');
+      }, 1200);
+    } catch (err: any) {
+      console.error('Firebase Auth signup error:', err);
+      if (err.code === 'auth/email-already-in-use') {
+        setError('Este e-mail já está cadastrado. Faça login ou use outro e-mail.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('A senha é muito fraca. Utilize pelo menos 6 caracteres.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Formato de e-mail inválido.');
+      } else {
+        setError(err.message || 'Erro ao registrar empresa. Tente novamente.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -72,7 +114,7 @@ function SignUpContent() {
               type="button"
               onClick={() => setPlan(p.id)}
               className={cn(
-                'p-3 rounded-xl border text-left transition-all',
+                'p-3 rounded-xl border text-left transition-all cursor-pointer',
                 plan === p.id
                   ? 'bg-indigo-600/20 border-indigo-500 text-white shadow-md'
                   : 'bg-[#0a0d14] border-[#1e293b] text-zinc-400 hover:text-white'
@@ -85,6 +127,21 @@ function SignUpContent() {
           ))}
         </div>
       </div>
+
+      {/* Error / Success Messages */}
+      {error && (
+        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-2.5 text-xs text-rose-300">
+          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {success && (
+        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-start gap-2.5 text-xs text-emerald-300">
+          <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+          <span>Conta criada e salva no Firebase com sucesso! Redirecionando...</span>
+        </div>
+      )}
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -152,13 +209,36 @@ function SignUpContent() {
           </div>
         </div>
 
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-zinc-300">Criar Senha de Acesso (mínimo 6 dígitos)</label>
+          <div className="relative">
+            <Lock className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type={showPassword ? 'text' : 'password'}
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Digite uma senha segura para a conta"
+              className="w-full bg-[#0a0d14] border border-[#1e293b] text-xs text-white pl-9 pr-10 py-2.5 rounded-xl focus:outline-none focus:border-indigo-500"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+
         <button
           type="submit"
-          disabled={loading}
-          className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xl shadow-indigo-600/30 transition-all mt-4 disabled:opacity-50"
+          disabled={loading || success}
+          className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xl shadow-indigo-600/30 transition-all mt-4 disabled:opacity-50 cursor-pointer"
         >
           {loading ? (
-            <span className="animate-pulse">Criando ambiente da equipe...</span>
+            <span className="animate-pulse">Criando conta no Firebase & Provisionando ambiente...</span>
           ) : (
             <>
               <Sparkles className="w-4 h-4 text-cyan-300" />
@@ -171,7 +251,7 @@ function SignUpContent() {
 
       <div className="pt-4 border-t border-[#1e293b] flex items-center justify-center gap-2 text-xs text-zinc-500">
         <ShieldCheck className="w-4 h-4 text-emerald-400" />
-        <span>Garantia de 7 dias ou seu dinheiro de volta sem burocracia.</span>
+        <span>Dados armazenados de forma criptografada no Firebase Auth & Firestore.</span>
       </div>
     </div>
   );

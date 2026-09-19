@@ -9,36 +9,61 @@ import {
   Mail,
   ArrowRight,
   ShieldCheck,
-  Building2,
-  Sparkles,
   CheckCircle2,
-  Landmark,
   Eye,
   EyeOff,
+  AlertCircle,
 } from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login, quickDemoLogin, user } = useAuth();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setLoading(true);
-    setTimeout(() => {
+
+    try {
+      await login(email, password);
       router.push('/');
-    }, 800);
+    } catch (err: any) {
+      console.error('Firebase Auth login error:', err);
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+        setError('E-mail ou senha incorretos. Verifique suas credenciais.');
+      } else if (err.code === 'auth/user-not-found') {
+        setError('Nenhuma conta encontrada com este e-mail. Crie uma conta no formulário de cadastro.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Formato de e-mail inválido.');
+      } else if (err.code === 'auth/too-many-requests') {
+        setError('Muitas tentativas sem sucesso. Tente novamente em instantes.');
+      } else {
+        setError(err.message || 'Erro ao autenticar. Tente novamente.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleQuickLogin = (demoEmail: string) => {
-    setEmail(demoEmail);
-    setPassword('••••••••••••');
+  const handleQuickLogin = async (role: 'sdr' | 'manager') => {
+    setError(null);
     setLoading(true);
-    setTimeout(() => {
+    try {
+      await quickDemoLogin(role);
       router.push('/');
-    }, 600);
+    } catch (err: any) {
+      console.error('Demo login error:', err);
+      setError('Falha ao conectar com modo de demonstração.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -73,8 +98,16 @@ export default function LoginPage() {
               </p>
             </div>
 
+            {/* Error Message */}
+            {error && (
+              <div className="mt-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-2.5 text-xs text-rose-300 animate-in fade-in duration-200">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
+
             {/* Login Form */}
-            <form onSubmit={handleLogin} className="mt-8 space-y-4">
+            <form onSubmit={handleLogin} className="mt-6 space-y-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-zinc-300">E-mail Corporativo</label>
                 <div className="relative">
@@ -127,10 +160,10 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition-all disabled:opacity-50 mt-2"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition-all disabled:opacity-50 mt-2 cursor-pointer"
               >
                 {loading ? (
-                  <span className="animate-pulse">Autenticando equipe...</span>
+                  <span className="animate-pulse">Conectando ao Firebase...</span>
                 ) : (
                   <>
                     <span>Entrar no Portal Comercial</span>
@@ -143,21 +176,23 @@ export default function LoginPage() {
             {/* Demo Quick Access */}
             <div className="mt-6 pt-6 border-t border-[#1e293b] space-y-2">
               <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
-                Acesso Rápido de Demonstração:
+                Acesso Rápido de Demonstração (Firebase):
               </p>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => handleQuickLogin('sdr.vendas@empresa.com.br')}
-                  className="py-2 px-3 rounded-lg bg-[#141b29] border border-[#1e293b] hover:border-cyan-500 text-zinc-300 hover:text-white text-xs font-medium text-left transition-all"
+                  disabled={loading}
+                  onClick={() => handleQuickLogin('sdr')}
+                  className="py-2.5 px-3 rounded-lg bg-[#141b29] border border-[#1e293b] hover:border-cyan-500 text-zinc-300 hover:text-white text-xs font-medium text-left transition-all disabled:opacity-50 cursor-pointer"
                 >
                   <p className="font-semibold text-white">Login como SDR</p>
                   <p className="text-[10px] text-cyan-400">Captação & Contatos</p>
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleQuickLogin('diretoria@empresa.com.br')}
-                  className="py-2 px-3 rounded-lg bg-[#141b29] border border-[#1e293b] hover:border-indigo-500 text-zinc-300 hover:text-white text-xs font-medium text-left transition-all"
+                  disabled={loading}
+                  onClick={() => handleQuickLogin('manager')}
+                  className="py-2.5 px-3 rounded-lg bg-[#141b29] border border-[#1e293b] hover:border-indigo-500 text-zinc-300 hover:text-white text-xs font-medium text-left transition-all disabled:opacity-50 cursor-pointer"
                 >
                   <p className="font-semibold text-white">Login como Gestor</p>
                   <p className="text-[10px] text-indigo-400">Dashboard & Propostas</p>
@@ -214,7 +249,7 @@ export default function LoginPage() {
           <div className="pt-6 border-t border-[#1e293b]/60 flex items-center justify-between text-xs text-zinc-400 relative z-10">
             <span className="flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              Criptografia Bancária & LGPD
+              Firebase Auth & Banco Firestore Conectados
             </span>
             <Link href="/landing" className="text-zinc-400 hover:text-white underline">
               Ver Landing Page

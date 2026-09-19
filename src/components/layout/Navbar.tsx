@@ -2,13 +2,15 @@
 
 import React, { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Search, Bell, Sparkles, Building, ChevronDown, LogOut } from 'lucide-react';
+import { Search, Sparkles, LogOut, User as UserIcon } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
 
 export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const [quickCnpj, setQuickCnpj] = useState('');
+  const { user, userProfile, logout } = useAuth();
 
   // If in public landing, login, or signup pages, hide internal app navbar
   if (pathname === '/landing' || pathname === '/login' || pathname === '/signup') {
@@ -27,6 +29,30 @@ export function Navbar() {
       setQuickCnpj('');
     }
   };
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
+
+  const getPlanBadge = (plan?: string) => {
+    switch (plan) {
+      case 'starter':
+        return { label: 'Starter SDR', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' };
+      case 'enterprise':
+        return { label: 'Enterprise AI', color: 'bg-purple-500/20 text-purple-300 border-purple-500/30' };
+      case 'scale':
+      default:
+        return { label: 'Scale B2B Pro', color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' };
+    }
+  };
+
+  const planBadge = getPlanBadge(userProfile?.plan);
+  const initials = userProfile?.adminName
+    ? userProfile.adminName.substring(0, 2).toUpperCase()
+    : user?.email
+    ? user.email.substring(0, 2).toUpperCase()
+    : 'PA';
 
   return (
     <header className="h-16 bg-[#0a0d14]/80 backdrop-blur-md border-b border-[#1e293b] px-6 flex items-center justify-between sticky top-0 z-30">
@@ -54,25 +80,34 @@ export function Navbar() {
           <span>Página Institucional</span>
         </Link>
 
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-950/40 border border-indigo-800/40 text-xs text-indigo-300">
-          <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-          <span>Inteligência Ativa</span>
+        {/* Plan status badge */}
+        <div className={`hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-semibold ${planBadge.color}`}>
+          <Sparkles className="w-3 h-3" />
+          <span>{planBadge.label}</span>
         </div>
 
-        {/* User Profile with logout link */}
-        <Link
-          href="/login"
-          title="Clique para trocar de usuário"
-          className="flex items-center gap-3 pl-2 border-l border-[#1e293b] hover:opacity-80 transition-opacity"
-        >
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold text-xs shadow-md">
-            AC
+        {/* User Profile info */}
+        <div className="flex items-center gap-3 pl-3 border-l border-[#1e293b]">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center text-white font-bold text-xs shadow-md">
+            {initials}
           </div>
           <div className="hidden md:block text-left">
-            <p className="text-xs font-semibold text-white leading-tight">Agente de Captação</p>
-            <p className="text-[11px] text-zinc-400">FIERN / Unidade B2B</p>
+            <p className="text-xs font-semibold text-white leading-tight">
+              {userProfile?.adminName || userProfile?.companyName || user?.email?.split('@')[0] || 'Gestor B2B'}
+            </p>
+            <p className="text-[10px] text-zinc-400 truncate max-w-[140px]">
+              {userProfile?.companyName || user?.email || 'ProspectAI Conectado'}
+            </p>
           </div>
-        </Link>
+
+          <button
+            onClick={handleLogout}
+            title="Sair da conta"
+            className="p-1.5 rounded-lg hover:bg-rose-500/10 text-zinc-400 hover:text-rose-400 transition-colors ml-1 cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </header>
   );

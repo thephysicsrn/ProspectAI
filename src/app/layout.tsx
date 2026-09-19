@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Navbar } from '@/components/layout/Navbar';
+import { Providers } from '@/components/providers/Providers';
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -24,16 +25,18 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={`dark ${jakarta.variable}`}>
       <body className="min-h-screen bg-[#070a10] text-zinc-100 font-sans antialiased flex selection:bg-indigo-500/30 selection:text-cyan-300">
-        {/* Sidebar */}
-        <Sidebar />
+        <Providers>
+          {/* Sidebar */}
+          <Sidebar />
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-          <Navbar />
-          <main className="flex-1 w-full mx-auto">
-            {children}
-          </main>
-        </div>
+          {/* Main Content Area */}
+          <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+            <Navbar />
+            <main className="flex-1 w-full mx-auto">
+              {children}
+            </main>
+          </div>
+        </Providers>
       </body>
     </html>
   );

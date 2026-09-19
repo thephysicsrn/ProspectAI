@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   Search,
@@ -13,8 +13,10 @@ import {
   Zap,
   Globe,
   LogOut,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/lib/auth-context';
 
 const navItems = [
   {
@@ -51,11 +53,18 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, userProfile, logout } = useAuth();
 
   // If in public landing, login, or signup pages, hide sidebar
   if (pathname === '/landing' || pathname === '/login' || pathname === '/signup') {
     return null;
   }
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
 
   return (
     <aside className="w-64 bg-[#0d121d] border-r border-[#1e293b] flex flex-col justify-between h-screen sticky top-0 z-40">
@@ -132,29 +141,33 @@ export function Sidebar() {
               <span>Ver Landing Page</span>
             </Link>
 
-            <Link
-              href="/login"
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-rose-400/80 hover:text-rose-300 hover:bg-rose-950/20 transition-all"
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-rose-400/80 hover:text-rose-300 hover:bg-rose-950/20 transition-all text-left cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
-              <span>Sair / Trocar Login</span>
-            </Link>
+              <span>Sair da Conta (Logout)</span>
+            </button>
           </div>
         </nav>
       </div>
 
       {/* Bottom Status Card */}
-      <div className="p-4 border-t border-[#1e293b]">
-        <div className="p-3 rounded-xl bg-[#131a29] border border-[#1e293b] space-y-2">
+      <div className="p-4 border-t border-[#1e293b] space-y-2">
+        <div className="p-3 rounded-xl bg-[#131a29] border border-[#1e293b] space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Base RFB Online
+              Firebase Auth & DB
             </span>
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
           </div>
-          <p className="text-[11px] text-zinc-400 leading-relaxed">
-            Inteligência de mercado e dados abertos em tempo real.
+          <p className="text-[11px] text-zinc-400 leading-snug">
+            {userProfile?.companyName ? (
+              <span className="text-zinc-300 font-medium">{userProfile.companyName}</span>
+            ) : (
+              'Autenticação em nuvem ativa'
+            )}
           </p>
         </div>
       </div>
